@@ -73,6 +73,10 @@ type AWSManagedMachinePoolSpec struct {
 	// +optional
 	SubnetIDs []string `json:"subnetIDs,omitempty"`
 
+	// Subnets is an array of subnet configurations
+	// +optional
+	Subnets []infrav1.AWSResourceReference `json:"subnets,omitempty"`
+
 	// AdditionalTags is an optional set of tags to add to AWS resources managed by the AWS provider, in addition to the
 	// ones added by default.
 	// +optional

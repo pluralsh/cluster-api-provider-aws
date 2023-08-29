@@ -20,7 +20,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/aws/aws-sdk-go/aws"
 	awsclient "github.com/aws/aws-sdk-go/aws/client"
+	"github.com/aws/aws-sdk-go/service/ec2"
+	"github.com/aws/aws-sdk-go/service/ec2/ec2iface"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -205,18 +208,65 @@ func (s *ManagedMachinePoolScope) ControlPlaneSubnets() infrav1.Subnets {
 }
 
 // SubnetIDs returns the machine pool subnet IDs.
-func (s *ManagedMachinePoolScope) SubnetIDs() ([]string, error) {
+func (s *ManagedMachinePoolScope) SubnetIDs(ec2Client ec2iface.EC2API) ([]string, error) {
 	strategy, err := newDefaultSubnetPlacementStrategy(&s.Logger)
 	if err != nil {
 		return []string{}, fmt.Errorf("getting subnet placement strategy: %w", err)
 	}
 
+	subnetIDs := make([]string, 0)
+	var inputFilters = make([]*ec2.Filter, 0)
+	if s.ManagedMachinePool.Spec.SubnetIDs != nil {
+		subnetIDs = s.ManagedMachinePool.Spec.SubnetIDs
+	}
+
+	for _, subnet := range s.ManagedMachinePool.Spec.Subnets {
+		switch {
+		case subnet.ID != nil:
+			subnetIDs = append(subnetIDs, aws.StringValue(subnet.ID))
+		case subnet.Filters != nil:
+			for _, eachFilter := range subnet.Filters {
+				inputFilters = append(inputFilters, &ec2.Filter{
+					Name:   aws.String(eachFilter.Name),
+					Values: aws.StringSlice(eachFilter.Values),
+				})
+			}
+		}
+	}
+
+	if len(inputFilters) > 0 {
+		out, err := ec2Client.DescribeSubnets(&ec2.DescribeSubnetsInput{
+			Filters: inputFilters,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		for _, subnet := range out.Subnets {
+			subnetIDs = append(subnetIDs, *subnet.SubnetId)
+		}
+	}
+
+	subnetIDs = removeDuplicate(subnetIDs)
+
 	return strategy.Place(&placementInput{
-		SpecSubnetIDs:           s.ManagedMachinePool.Spec.SubnetIDs,
+		SpecSubnetIDs:           subnetIDs,
 		SpecAvailabilityZones:   s.ManagedMachinePool.Spec.AvailabilityZones,
 		ParentAvailabilityZones: s.MachinePool.Spec.FailureDomains,
 		ControlplaneSubnets:     s.ControlPlaneSubnets(),
 	})
+}
+
+func removeDuplicate[T string | int](sliceList []T) []T {
+	allKeys := make(map[T]bool)
+	list := []T{}
+	for _, item := range sliceList {
+		if _, value := allKeys[item]; !value {
+			allKeys[item] = true
+			list = append(list, item)
+		}
+	}
+	return list
 }
 
 // NodegroupReadyFalse marks the ready condition false using warning if error isn't

@@ -386,6 +386,13 @@ func (in *AWSManagedMachinePoolSpec) DeepCopyInto(out *AWSManagedMachinePoolSpec
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.Subnets != nil {
+		in, out := &in.Subnets, &out.Subnets
+		*out = make([]apiv1beta2.AWSResourceReference, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.AdditionalTags != nil {
 		in, out := &in.AdditionalTags, &out.AdditionalTags
 		*out = make(apiv1beta2.Tags, len(*in))

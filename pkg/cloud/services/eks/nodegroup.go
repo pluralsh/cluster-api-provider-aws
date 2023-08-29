@@ -202,7 +202,7 @@ func (s *NodegroupService) createNodegroup() (*eks.Nodegroup, error) {
 		return nil, errors.Wrap(err, "failed to create remote access configuration")
 	}
 
-	subnets, err := s.scope.SubnetIDs()
+	subnets, err := s.scope.SubnetIDs(s.EC2Client)
 	if err != nil {
 		return nil, fmt.Errorf("failed getting nodegroup subnets: %w", err)
 	}

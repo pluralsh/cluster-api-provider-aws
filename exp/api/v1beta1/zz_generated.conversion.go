@@ -707,6 +707,7 @@ func autoConvert_v1beta2_AWSManagedMachinePoolSpec_To_v1beta1_AWSManagedMachineP
 	out.EKSNodegroupName = in.EKSNodegroupName
 	out.AvailabilityZones = *(*[]string)(unsafe.Pointer(&in.AvailabilityZones))
 	out.SubnetIDs = *(*[]string)(unsafe.Pointer(&in.SubnetIDs))
+	// WARNING: in.Subnets requires manual conversion: does not exist in peer-type
 	out.AdditionalTags = *(*apiv1beta2.Tags)(unsafe.Pointer(&in.AdditionalTags))
 	out.RoleAdditionalPolicies = *(*[]string)(unsafe.Pointer(&in.RoleAdditionalPolicies))
 	out.RoleName = in.RoleName
